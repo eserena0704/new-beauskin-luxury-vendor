@@ -64,6 +64,46 @@ const SettingsIntegration = () => {
           const parsedDoc = parser.parseFromString(scriptCode, "text/html");
           const injectedList: HTMLElement[] = [];
 
+          // Patch DOMContentLoaded / load event listeners for dynamic SPA execution
+          const originalDocAddEventListener = document.addEventListener;
+          const originalWinAddEventListener = window.addEventListener;
+
+          document.addEventListener = function(type, listener, options) {
+            if (type === "DOMContentLoaded") {
+              if (document.readyState === "interactive" || document.readyState === "complete") {
+                try {
+                  if (typeof listener === "function") {
+                    listener(new Event("DOMContentLoaded"));
+                  } else if (listener && typeof (listener as any).handleEvent === "function") {
+                    (listener as any).handleEvent(new Event("DOMContentLoaded"));
+                  }
+                } catch (err) {
+                  console.error("Error in dynamic DOMContentLoaded listener:", err);
+                }
+                return;
+              }
+            }
+            return originalDocAddEventListener.apply(this, arguments as any);
+          };
+
+          window.addEventListener = function(type, listener, options) {
+            if (type === "load") {
+              if (document.readyState === "complete") {
+                try {
+                  if (typeof listener === "function") {
+                    listener(new Event("load"));
+                  } else if (listener && typeof (listener as any).handleEvent === "function") {
+                    (listener as any).handleEvent(new Event("load"));
+                  }
+                } catch (err) {
+                  console.error("Error in dynamic load listener:", err);
+                }
+                return;
+              }
+            }
+            return originalWinAddEventListener.apply(this, arguments as any);
+          };
+
           const injectNode = (node: Node, targetContainer: HTMLElement) => {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const el = node as HTMLElement;
@@ -92,6 +132,10 @@ const SettingsIntegration = () => {
 
           parsedDoc.head.childNodes.forEach((node) => injectNode(node, document.head));
           parsedDoc.body.childNodes.forEach((node) => injectNode(node, document.body));
+
+          // Restore event listeners
+          document.addEventListener = originalDocAddEventListener;
+          window.addEventListener = originalWinAddEventListener;
 
           (window as any).__chatbot_injected__ = true;
           (window as any).__injected_elements__ = injectedList;
