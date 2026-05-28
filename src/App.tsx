@@ -54,10 +54,17 @@ const SettingsIntegration = () => {
     const loadSettingsAndInject = async () => {
       try {
         const response = await fetch("/api/settings");
-        if (!response.ok) return;
+        let scriptCode = "";
+        if (response.ok) {
+          const data = await response.json();
+          scriptCode = data.chatbotScript;
+        }
 
-        const data = await response.json();
-        const scriptCode = data.chatbotScript;
+        if (!scriptCode || !scriptCode.trim()) {
+          scriptCode = window.localStorage.getItem("beauskin-chatbot-script") || "";
+        } else {
+          window.localStorage.setItem("beauskin-chatbot-script", scriptCode);
+        }
 
         if (scriptCode && scriptCode.trim()) {
           const parser = new DOMParser();

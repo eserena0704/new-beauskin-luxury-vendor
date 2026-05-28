@@ -118,12 +118,23 @@ const Admin = () => {
   const loadSettings = useCallback(async () => {
     try {
       const response = await fetch("/api/settings");
+      let activeScript = "";
       if (response.ok) {
         const data = await response.json();
-        setChatbotScript(data.chatbotScript || "");
+        activeScript = data.chatbotScript || "";
       }
+
+      if (!activeScript) {
+        activeScript = window.localStorage.getItem("beauskin-chatbot-script") || "";
+      } else {
+        window.localStorage.setItem("beauskin-chatbot-script", activeScript);
+      }
+
+      setChatbotScript(activeScript);
     } catch (err) {
       console.error("Failed to load settings:", err);
+      const cached = window.localStorage.getItem("beauskin-chatbot-script") || "";
+      setChatbotScript(cached);
     }
   }, []);
 
@@ -133,6 +144,8 @@ const Admin = () => {
     setSettingsMessage("");
 
     try {
+      window.localStorage.setItem("beauskin-chatbot-script", chatbotScript);
+
       const response = await fetch("/api/admin-settings", {
         method: "POST",
         headers: {
